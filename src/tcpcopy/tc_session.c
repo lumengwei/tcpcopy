@@ -254,7 +254,7 @@ sess_init(tc_sess_t *s)
     s->slide_win_packs = link_list_create(s->pool);
 
     s->create_time = tc_time();
-    s->rep_rcv_con_time = tc_time();
+    s->rep_rcv_time = tc_time();
     s->req_snd_con_time  = tc_time();
 
     s->sm.state  = CLOSED;
@@ -348,13 +348,13 @@ sess_obso(tc_sess_t *s, time_t cur, time_t thrsh_time, time_t thrsh_keep_time)
             return OBSOLETE;
         }
     }
-    if (s->rep_rcv_con_time < thrsh_time) {
+    if (s->rep_rcv_time < thrsh_time) {
         if (s->slide_win_packs->size > 0) {
             tc_stat.obs_cnt++;
             return OBSOLETE;
         }  else {
             if (s->sm.state >= SND_REQ) {
-                if (s->rep_rcv_con_time < thrsh_keep_time) {
+                if (s->rep_rcv_time < thrsh_keep_time) {
                     tc_stat.obs_cnt++;
                     tc_log_debug1(LOG_DEBUG, 0, "keepalive timeout ,p:%u", 
                             ntohs(s->src_port));
@@ -374,7 +374,7 @@ sess_obso(tc_sess_t *s, time_t cur, time_t thrsh_time, time_t thrsh_keep_time)
     }
 
     threshold = 256;
-    diff = cur - s->rep_rcv_con_time;
+    diff = cur - s->rep_rcv_time;
     if (diff < 6) {
         threshold = threshold << 1;
     }
@@ -1413,6 +1413,7 @@ proc_bak_pack(tc_sess_t *s, tc_iph_t *ip, tc_tcph_t *tcp)
     uint32_t cur_target_ack_seq;
 
     tc_stat.resp_cnt++;
+    s->rep_rcv_time = tc_time();
     tc_log_debug_trace(LOG_DEBUG, 0, TC_BAK, ip, tcp);
 
     if (!tcp->rst) {
@@ -1440,7 +1441,6 @@ proc_bak_pack(tc_sess_t *s, tc_iph_t *ip, tc_tcph_t *tcp)
                 s->sm.rep_dup_ack_cnt = 0;
             }
             tc_stat.resp_cont_cnt++;
-            s->rep_rcv_con_time = tc_time();
             cur_target_ack_seq = s->cur_pack.seq + s->cur_pack.cont_len;
 
             if (after(cur_target_ack_seq, s->target_ack_seq) || tcp->fin) {
