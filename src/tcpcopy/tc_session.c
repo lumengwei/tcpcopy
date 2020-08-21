@@ -1510,11 +1510,13 @@ proc_bak_pack(tc_sess_t *s, tc_iph_t *ip, tc_tcph_t *tcp)
 
             } else {
                 s->sm.rep_payload_type = 0;
-                if (win_updated && s->sm.delay_snd) {
-                    tc_log_debug1(LOG_INFO, 0, "send delayed packets:%u",
+                if (win_updated) {
+                    if (s->sm.delay_snd) {
+                        tc_log_debug1(LOG_INFO, 0, "send delayed packets:%u",
                             ntohs(s->src_port));
-                    s->sm.candidate_rep_wait = 0;
-                    s->sm.delay_snd = 0;
+                        s->sm.candidate_rep_wait = 0;
+                        s->sm.delay_snd = 0;
+                    }
                     proc_clt_pack_from_buffer(s);
                 }
                 if (s->sm.src_closed && s->sm.dst_closed) {
